@@ -6,58 +6,57 @@
 <meta name="theme-color" content="#FFF8EF">
 <title>Little Voices</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:system-ui,-apple-system,sans-serif;background:#fff8ef;color:#3d332b;touch-action:manipulation}.app{height:100%;display:flex;align-items:center;justify-content:center;padding:16px}.card{width:100%;height:100%;max-width:620px;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 35px rgba(0,0,0,.08)}.content{text-align:center;width:100%;padding:28px}.picture{font-size:clamp(120px,35vw,210px);line-height:1;margin-bottom:35px}.start{border:0;border-radius:999px;background:#ffd36a;color:#3d332b;font-size:24px;font-weight:800;padding:20px 42px;box-shadow:0 5px 0 #e3ad3f;min-width:220px}.start:active{transform:translateY(3px);box-shadow:0 2px 0 #e3ad3f}.status{min-height:32px;margin-top:22px;font-size:20px;font-weight:700}.attempt{min-height:24px;margin-top:8px;font-size:16px;font-weight:600;opacity:.75}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:system-ui,-apple-system,sans-serif;background:#fff8ef;color:#3d332b;touch-action:manipulation}.app{height:100%;display:flex;align-items:center;justify-content:center;padding:16px}.card{width:100%;height:100%;max-width:620px;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 35px rgba(0,0,0,.08)}.content{text-align:center;width:100%;padding:28px}.picture{font-size:clamp(120px,35vw,210px);line-height:1;margin-bottom:30px}.start{border:0;border-radius:999px;background:#ffd36a;color:#3d332b;font-size:24px;font-weight:800;padding:20px 42px;box-shadow:0 5px 0 #e3ad3f;min-width:220px}.start:active{transform:translateY(3px);box-shadow:0 2px 0 #e3ad3f}.status{min-height:34px;margin-top:22px;font-size:22px;font-weight:800}.attempt{min-height:26px;margin-top:8px;font-size:17px;font-weight:700;opacity:.72}.version{position:fixed;bottom:8px;right:10px;font-size:11px;opacity:.35}
 </style>
 </head>
 <body>
-<div class="app"><main class="card" aria-label="Little Voices"><div class="content"><div id="picture" class="picture">🍎</div><button id="start" class="start">Start</button><div id="status" class="status" aria-live="polite"></div><div id="attempt" class="attempt"></div></div></main></div>
+<div class="app"><main class="card" aria-label="Little Voices"><div class="content"><div id="picture" class="picture">🍎</div><button id="start" class="start">Start</button><div id="status" class="status" aria-live="polite"></div><div id="attempt" class="attempt"></div></div></main></div><div class="version">Little Voices v0.3</div>
 <script>
 const lessons=[['en-US',['apple','dog','cat','car','ball','milk','spoon','tree']],['es-ES',['manzana','perro','gato','coche','pelota','leche','cuchara','árbol']],['zh-CN',['苹果','狗','猫','汽车','球','牛奶','勺子','树']],['fr-FR',['pomme','chien','chat','voiture','balle','lait','cuillère','arbre']]];
 const pics=['🍎','🐶','🐱','🚗','⚽','🥛','🥄','🌳'];
-let li=0,wi=0,attempts=0,listening=false,recognition=null;
+let li=0,wi=0,attempts=0,listening=false,recognition=null,round=0;
 const $=id=>document.getElementById(id);
 function setStatus(s){$('status').textContent=s}
 function setAttempt(){ $('attempt').textContent=attempts ? `Try ${attempts} of 3` : ''; }
-function speak(text,thenNext=false){
- const locale=lessons[li][0]; speechSynthesis.cancel();
- const u=new SpeechSynthesisUtterance(text);u.lang=locale;u.rate=.78;u.pitch=1.05;
- u.onend=()=>{if(thenNext){setTimeout(next,700)}else{setTimeout(startListening,500)}};
- u.onerror=()=>{if(thenNext){setTimeout(next,700)}else{setTimeout(startListening,500)}};
+function cancelRecognition(){if(recognition){try{recognition.onresult=null;recognition.onerror=null;recognition.onend=null;recognition.stop()}catch(e){}recognition=null}listening=false}
+function sayWord(){
+ cancelRecognition();
+ const myRound=round,word=lessons[li][1][wi],locale=lessons[li][0];
+ setStatus('Listen…');setAttempt();speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance(word);u.lang=locale;u.rate=.72;u.pitch=1.05;
+ u.onend=()=>{if(myRound===round)setTimeout(startListening,1200)};
+ u.onerror=()=>{if(myRound===round)setTimeout(startListening,1200)};
  speechSynthesis.speak(u);
 }
-function sayWord(){
- const word=lessons[li][1][wi];
- setStatus('Listen…'); setAttempt(); speechSynthesis.cancel();
- const u=new SpeechSynthesisUtterance(word);u.lang=lessons[li][0];u.rate=.72;u.pitch=1.05;
- u.onend=()=>setTimeout(startListening,450);u.onerror=()=>setTimeout(startListening,450);speechSynthesis.speak(u);
+function encourage(text,nextAfter){
+ cancelRecognition();speechSynthesis.cancel();setStatus(text);setAttempt();
+ const myRound=round,locale=lessons[li][0];
+ const u=new SpeechSynthesisUtterance(text);u.lang=locale;u.rate=.82;u.pitch=1.08;
+ u.onend=()=>{if(myRound===round)setTimeout(nextAfter,800)};u.onerror=()=>{if(myRound===round)setTimeout(nextAfter,800)};
+ speechSynthesis.speak(u);
 }
-function successful(){
- attempts=0;setAttempt();setStatus('Good job! 🌟');speak('Good job! You did it!',true);
-}
-function failed(){
- attempts++;
- setAttempt();
- if(attempts>=3){
-   attempts=0;setAttempt();setStatus("Let's try another word! 💛");speak("Let's try another word!",true);
- }else{
-   setStatus('Good try! ❤️');
-   setTimeout(sayWord,900);
- }
+function success(){attempts=0;setAttempt();encourage('Good job! You did it!',next)}
+function failure(){
+ attempts++;setAttempt();
+ if(attempts>=3){attempts=0;setAttempt();encourage("Let's try another word!",next)}
+ else{setStatus('Good try! ❤️');setTimeout(sayWord,900)}
 }
 function startListening(){
  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
- if(!SR){setStatus('Speech recognition is not available.');return;}
- const target=lessons[li][1][wi].toLowerCase();
- recognition=new SR();recognition.lang=lessons[li][0];recognition.interimResults=false;recognition.continuous=false;recognition.maxAlternatives=5;listening=true;
- let gotResult=false;
- recognition.onresult=e=>{gotResult=true;listening=false;const heard=[...e.results[0]].map(x=>x.transcript.toLowerCase().trim());const ok=heard.some(x=>x===target||similarity(x,target)>=.72);if(ok)successful();else failed();};
- recognition.onerror=e=>{if(listening){listening=false;failed();}};
- recognition.onend=()=>{if(listening){listening=false;if(!gotResult)failed();}};
- try{recognition.start()}catch(e){listening=false;failed();}
+ if(!SR){setStatus('Speech recognition is not available in this browser.');return;}
+ const myRound=round,target=lessons[li][1][wi].toLowerCase();
+ cancelRecognition();
+ const r=new SR();recognition=r;listening=true;r.lang=lessons[li][0];r.interimResults=false;r.continuous=false;r.maxAlternatives=5;
+ let finished=false;
+ const failOnce=()=>{if(finished||myRound!==round)return;finished=true;listening=false;failure()};
+ r.onresult=e=>{if(finished||myRound!==round)return;finished=true;listening=false;const heard=[...e.results[0]].map(x=>x.transcript.toLowerCase().trim());const ok=heard.some(x=>x===target||similarity(x,target)>=.72);if(ok)success();else failure()};
+ r.onerror=()=>failOnce();
+ r.onend=()=>{if(!finished)failOnce()};
+ try{r.start()}catch(e){failOnce()}
 }
 function similarity(a,b){if(a===b)return 1;if(!a||!b)return 0;const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)d[i][0]=i;for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!==b[j-1]));return 1-d[m][n]/Math.max(m,n)}
-function next(){wi++;if(wi>=lessons[li][1].length){wi=0;li=(li+1)%lessons.length}attempts=0;$('picture').textContent=pics[wi];setAttempt();setTimeout(sayWord,350)}
-$('start').addEventListener('click',()=>{attempts=0;$('start').style.display='none';sayWord()});
+function next(){round++;cancelRecognition();attempts=0;wi++;if(wi>=lessons[li][1].length){wi=0;li=(li+1)%lessons.length}$('picture').textContent=pics[wi];setAttempt();setTimeout(sayWord,350)}
+$('start').addEventListener('click',()=>{round++;attempts=0;$('start').style.display='none';sayWord()});
 </script>
-<!-- Little Voices: robust 3-attempt flow, including recognition failures -->
+<!-- Little Voices v0.3: isolated speech rounds, delayed listening, and guaranteed 3-attempt progression. -->
 </body></html>
