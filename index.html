@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#FFF8EF">
+<title>Little Voices</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:system-ui,-apple-system,sans-serif;background:#fff8ef;color:#3d332b;touch-action:manipulation}.app{height:100%;display:flex;align-items:center;justify-content:center;padding:16px}.card{width:100%;height:100%;max-width:620px;border-radius:36px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 35px rgba(0,0,0,.08)}.content{text-align:center;width:100%;padding:28px}.picture{font-size:clamp(120px,35vw,210px);line-height:1;margin-bottom:35px}.start{border:0;border-radius:999px;background:#ffd36a;color:#3d332b;font-size:24px;font-weight:800;padding:20px 42px;box-shadow:0 5px 0 #e3ad3f;min-width:220px}.start:active{transform:translateY(3px);box-shadow:0 2px 0 #e3ad3f}.status{min-height:32px;margin-top:22px;font-size:20px;font-weight:600}.hidden{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<div class="app"><main class="card" aria-label="Little Voices">
+<div class="content"><div id="picture" class="picture">🍎</div><button id="start" class="start">Start</button><div id="status" class="status" aria-live="polite"></div></div>
+</main></div>
+<script>
+const lessons=[
+['en-US',['apple','dog','cat','car','ball','milk','spoon','tree']],
+['es-ES',['manzana','perro','gato','coche','pelota','leche','cuchara','árbol']],
+['zh-CN',['苹果','狗','猫','汽车','球','牛奶','勺子','树']],
+['fr-FR',['pomme','chien','chat','voiture','balle','lait','cuillère','arbre']]
+];
+const pics=['🍎','🐶','🐱','🚗','⚽','🥛','🥄','🌳'];
+let li=0,wi=0,listening=false;
+const $=id=>document.getElementById(id);
+function setStatus(s){$('status').textContent=s}
+function speak(){
+ const [locale,words]=lessons[li],word=words[wi];
+ speechSynthesis.cancel();
+ const u=new SpeechSynthesisUtterance(word);u.lang=locale;u.rate=.72;u.pitch=1.05;
+ u.onstart=()=>setStatus('');u.onend=()=>setTimeout(startListening,450);u.onerror=()=>setStatus('Let’s try again ❤️');
+ speechSynthesis.speak(u);
+}
+function startListening(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){setStatus('');return;}
+ const [locale,words]=lessons[li],target=words[wi].toLowerCase();
+ const r=new SR();r.lang=locale;r.interimResults=false;r.continuous=false;r.maxAlternatives=5;listening=true;
+ r.onresult=e=>{listening=false;const heard=[...e.results[0]].map(x=>x.transcript.toLowerCase().trim());const ok=heard.some(x=>x===target||similarity(x,target)>=.55);if(ok){setStatus('Yes! 🌟');setTimeout(next,1000)}else{setStatus('Good try ❤️');setTimeout(speak,900)}};
+ r.onerror=()=>{listening=false;setTimeout(speak,700)};
+ r.onend=()=>{if(listening){listening=false;setTimeout(speak,700)}};
+ try{r.start()}catch(e){listening=false;setTimeout(speak,700)}
+}
+function similarity(a,b){if(a===b)return 1;if(!a)return 0;const m=a.length,n=b.length,d=Array.from({length:m+1},()=>Array(n+1).fill(0));for(let i=0;i<=m;i++)d[i][0]=i;for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!==b[j-1]));return 1-d[m][n]/Math.max(m,n)}
+function next(){wi++;if(wi>=lessons[li][1].length){wi=0;li=(li+1)%lessons.length}$('picture').textContent=pics[wi];setTimeout(speak,350)}
+$('start').addEventListener('click',()=>{if(!speechSynthesis)return;speak();$('start').style.display='none'});
+</script>
+</body></html>
