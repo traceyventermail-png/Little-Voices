@@ -45,4 +45,5 @@ function similarity(a,b){if(a===b)return 1;if(!a)return 0;const m=a.length,n=b.l
 function next(){wi++;if(wi>=lessons[li][1].length){wi=0;li=(li+1)%lessons.length}$('picture').textContent=pics[wi];setTimeout(speak,350)}
 $('start').addEventListener('click',()=>{if(!speechSynthesis)return;speak();$('start').style.display='none'});
 </script>
+<!-- Little Voices Pages refresh: 2026-08-22 -->
 </body></html>
