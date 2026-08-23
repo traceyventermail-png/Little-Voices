@@ -46,6 +46,8 @@ jobs:
           import android.speech.RecognitionListener;
           import android.speech.RecognizerIntent;
           import android.speech.SpeechRecognizer;
+          import android.speech.tts.TextToSpeech;
+          import android.speech.tts.UtteranceProgressListener;
 
           import com.getcapacitor.JSArray;
           import com.getcapacitor.JSObject;
@@ -58,12 +60,14 @@ jobs:
           import com.getcapacitor.annotation.PermissionCallback;
 
           import java.util.ArrayList;
+          import java.util.Locale;
 
           @CapacitorPlugin(name = "SpeechPlugin", permissions = {
               @Permission(strings = { Manifest.permission.RECORD_AUDIO }, alias = "microphone")
           })
           public class SpeechPlugin extends Plugin {
               private SpeechRecognizer recognizer;
+              private TextToSpeech tts;
               private boolean keepListening = false;
               private String currentLanguage = "en-US";
 
@@ -72,6 +76,39 @@ jobs:
                   JSObject result = new JSObject();
                   result.put("available", SpeechRecognizer.isRecognitionAvailable(getContext()));
                   call.resolve(result);
+              }
+
+              @PluginMethod
+              public void speak(PluginCall call) {
+                  String text = call.getString("text", "");
+                  String language = call.getString("language", "en-US");
+                  double rate = call.getDouble("rate", 0.78);
+                  if (text.isEmpty()) { call.resolve(); return; }
+
+                  getActivity().runOnUiThread(() -> {
+                      if (tts != null) {
+                          try { tts.stop(); } catch (Exception ignored) {}
+                          tts.shutdown();
+                          tts = null;
+                      }
+                      tts = new TextToSpeech(getContext(), status -> {
+                          if (status != TextToSpeech.SUCCESS) {
+                              call.reject("Text-to-speech initialization failed");
+                              return;
+                          }
+                          Locale locale = Locale.forLanguageTag(language);
+                          tts.setLanguage(locale);
+                          tts.setSpeechRate((float) rate);
+                          String utteranceId = "lv_" + System.nanoTime();
+                          tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                              @Override public void onStart(String id) {}
+                              @Override public void onDone(String id) { call.resolve(); }
+                              @Override public void onError(String id) { call.reject("Text-to-speech failed"); }
+                          });
+                          int result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+                          if (result == TextToSpeech.ERROR) call.reject("Text-to-speech failed to start");
+                      });
+                  });
               }
 
               @PluginMethod
@@ -86,11 +123,8 @@ jobs:
 
               @PermissionCallback
               private void permissionCallback(PluginCall call) {
-                  if (getPermissionState("microphone") == PermissionState.GRANTED) {
-                      beginListening(call);
-                  } else {
-                      call.reject("Microphone permission denied");
-                  }
+                  if (getPermissionState("microphone") == PermissionState.GRANTED) beginListening(call);
+                  else call.reject("Microphone permission denied");
               }
 
               private void beginListening(PluginCall call) {
@@ -101,9 +135,7 @@ jobs:
 
               private void startRecognizerSession() {
                   if (!keepListening) return;
-                  if (recognizer != null) {
-                      recognizer.destroy();
-                  }
+                  if (recognizer != null) recognizer.destroy();
 
                   if (Build.VERSION.SDK_INT >= 33 && SpeechRecognizer.isOnDeviceRecognitionAvailable(getContext())) {
                       recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(getContext());
@@ -126,37 +158,27 @@ jobs:
                       @Override public void onBufferReceived(byte[] buffer) {}
                       @Override public void onEndOfSpeech() {}
                       @Override public void onEvent(int eventType, Bundle params) {}
-
                       @Override public void onError(int error) {
                           JSObject data = new JSObject();
                           data.put("code", error);
                           notifyListeners("error", data);
                           boolean recoverable = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT;
-                          if (keepListening && recoverable) {
-                              startRecognizerSession();
-                          } else {
-                              keepListening = false;
-                          }
+                          if (keepListening && recoverable) startRecognizerSession(); else keepListening = false;
                       }
-
                       @Override public void onResults(Bundle results) {
                           notifyListeners("finalResults", toPayload(results == null ? null : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)));
                           if (keepListening) startRecognizerSession();
                       }
-
                       @Override public void onPartialResults(Bundle partialResults) {
                           notifyListeners("partialResults", toPayload(partialResults == null ? null : partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)));
                       }
                   });
-
                   recognizer.startListening(intent);
               }
 
               private JSObject toPayload(ArrayList<String> matches) {
                   JSArray arr = new JSArray();
-                  if (matches != null) {
-                      for (String match : matches) arr.put(match);
-                  }
+                  if (matches != null) for (String match : matches) arr.put(match);
                   JSObject result = new JSObject();
                   result.put("matches", arr);
                   return result;
@@ -174,6 +196,14 @@ jobs:
                   });
                   call.resolve();
               }
+
+              @Override
+              protected void handleOnDestroy() {
+                  keepListening = false;
+                  if (recognizer != null) { try { recognizer.destroy(); } catch (Exception ignored) {} }
+                  if (tts != null) { try { tts.stop(); } catch (Exception ignored) {} tts.shutdown(); }
+                  super.handleOnDestroy();
+              }
           }
           EOF
           rm -f "$PKG_DIR/SpeechPlugin.kt"
@@ -181,6 +211,37 @@ jobs:
       - name: Add microphone permission
         run: |
           sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+
+      - name: Add Android WebView bridge shim
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('www/index.html')
+          s = p.read_text(encoding='utf-8')
+          shim = r'''<script>
+          (function(){
+            try {
+              var cap = window.Capacitor;
+              var nativeSpeech = cap && cap.registerPlugin ? cap.registerPlugin('SpeechPlugin') : null;
+              window.__LittleVoicesNativeSpeech = nativeSpeech;
+              var originalSpeak = window.speak;
+              window.speak = function(text, cb, rate) {
+                rate = rate == null ? 0.78 : rate;
+                var plugin = window.__LittleVoicesNativeSpeech;
+                if (plugin && plugin.speak) {
+                  plugin.speak({text:text, language:(window.data && window.data[window.L] ? window.data[window.L()].locale : 'en-US'), rate:rate})
+                    .then(function(){ setTimeout(function(){ if(!window.paused) cb(); },350); })
+                    .catch(function(){ if(originalSpeak) originalSpeak(text, cb, rate); else cb(); });
+                  return;
+                }
+                if (originalSpeak) originalSpeak(text, cb, rate);
+                else cb();
+              };
+            } catch(e) { console.log('Little Voices Android bridge shim:', e); }
+          })();
+          </script>'''
+          p.write_text(s.replace('</body></html>', shim + '</body></html>'), encoding='utf-8')
+          PY
 
       - name: Sync web assets
         run: npx cap sync android
