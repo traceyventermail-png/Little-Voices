@@ -1,0 +1,42 @@
+name: Fix back navigation
+on:
+  push:
+    branches: [little-voices-test]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, 'Fix back navigation') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make Back go to previous item
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old_render = "${set>0?'<button class=\"btn\" onclick=\"backSet()\">↩ Go back</button>':''}"
+          new_render = "${(i>0||set>0)?'<button class=\"btn\" onclick=\"backItem()\">↩ Back</button>':''}"
+          if old_render not in s:
+              raise SystemExit('render back button target not found')
+          s = s.replace(old_render, new_render)
+          old_finish = "${set>0?'<button class=\"btn\" onclick=\"backSet()\">↩ Go back</button>':''}`}}"
+          new_finish = "${set>0?'<button class=\"btn\" onclick=\"backSet()\">↩ Previous set</button>':''}`}}"
+          if old_finish not in s:
+              raise SystemExit('finish-set back button target not found')
+          s = s.replace(old_finish, new_finish)
+          marker = "function backSet(){stopListening();set=Math.max(0,set-1);i=0;tries=0;speed=0;savePlace();render();intro()}"
+          replacement = marker + "function backItem(){stopListening();speechSynthesis.cancel();paused=false;tries=0;speed=0;if(i>0){i--}else if(set>0){set--;i=items().length-1}else{return}savePlace();render();intro()}"
+          if marker not in s:
+              raise SystemExit('backSet function target not found')
+          s = s.replace(marker, replacement)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix back navigation'
+          git push
