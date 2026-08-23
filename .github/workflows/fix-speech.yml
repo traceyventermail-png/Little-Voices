@@ -1,0 +1,31 @@
+name: Fix speech matching
+on:
+  push:
+    branches: [little-voices-test]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, 'Fix exact speech matching') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make speech matching exact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "function match(a,b){a=norm(a);b=norm(b);if(!a||!b)return false;if(a===b)return true;const A=a.split(' '),B=b.split(' ');if(level==='hard'){const h=B.filter(y=>A.some(x=>x===y)).length;return h>=Math.max(1,Math.ceil(B.length*.75))}let h=0;for(const y of B)if(A.some(x=>x===y||y.startsWith(x.slice(0,2))))h++;return h>=Math.max(1,Math.ceil(B.length*.75))}"
+          new = "function match(a,b){a=norm(a);b=norm(b);return !!a&&!!b&&a===b}"
+          if old not in s:
+              raise SystemExit('target match function not found')
+          p.write_text(s.replace(old,new),encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix exact speech matching'
+          git push
