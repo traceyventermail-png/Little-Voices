@@ -10,17 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Install JS dependencies
         run: npm install
+
+      - name: Prepare web assets
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+
       - name: Scaffold Android project
         run: npx cap add android
+
       - name: Wire in native speech plugin
         run: |
           PKG_DIR=android/app/src/main/java/com/littlevoices/app
@@ -28,13 +38,18 @@ jobs:
           cp native/android-src/SpeechPlugin.kt "$PKG_DIR/SpeechPlugin.kt"
           cp native/android-src/MainActivity.java "$PKG_DIR/MainActivity.java"
           rm -f "$PKG_DIR/MainActivity.kt"
+
       - name: Add microphone permission
-        run: sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+        run: |
+          sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+
       - name: Sync web assets
         run: npx cap sync android
+
       - name: Build debug APK
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleDebug
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
