@@ -1,0 +1,22 @@
+// Large curriculum expansion: 8 additional sets per level, shared picture meanings across languages.
+(()=>{
+const S=[
+[['water','agua','eau','水','💧'],['door','puerta','porte','门','🚪'],['window','ventana','fenêtre','窗户','🪟'],['table','mesa','table','桌子','🪑'],['bed','cama','lit','床','🛏️'],['cup','taza','tasse','杯子','🥤'],['plate','plato','assiette','盘子','🍽️'],['spoon','cuchara','cuillère','勺子','🥄']],
+[['fork','tenedor','fourchette','叉子','🍴'],['knife','cuchillo','couteau','刀','🔪'],['bottle','botella','bouteille','瓶子','🍼'],['banana','plátano','banane','香蕉','🍌'],['grape','uva','raisin','葡萄','🍇'],['lemon','limón','citron','柠檬','🍋'],['tomato','tomate','tomate','西红柿','🍅'],['potato','patata','pomme de terre','土豆','🥔']],
+[['carrot','zanahoria','carotte','胡萝卜','🥕'],['corn','maíz','maïs','玉米','🌽'],['chocolate','chocolate','chocolat','巧克力','🍫'],['pizza','pizza','pizza','披萨','🍕'],['soup','sopa','soupe','汤','🍲'],['watermelon','sandía','pastèque','西瓜','🍉'],['pear','pera','poire','梨','🍐'],['peach','melocotón','pêche','桃子','🍑']],
+[['bus','autobús','bus','公交车','🚌'],['train','tren','train','火车','🚆'],['bicycle','bicicleta','vélo','自行车','🚲'],['airplane','avión','avion','飞机','✈️'],['boat','barco','bateau','船','⛵'],['truck','camión','camion','卡车','🚚'],['taxi','taxi','taxi','出租车','🚕'],['bus stop','parada de autobús','arrêt de bus','公交站','🚏']],
+[['rain','lluvia','pluie','雨','🌧️'],['cloud','nube','nuage','云','☁️'],['snow','nieve','neige','雪','❄️'],['wind','viento','vent','风','💨'],['sun','sol','soleil','太阳','☀️'],['moon','luna','lune','月亮','🌙'],['star','estrella','étoile','星星','⭐'],['sky','cielo','ciel','天空','🌌']],
+[['morning','mañana','matin','早上','🌅'],['afternoon','tarde','après-midi','下午','🌤️'],['night','noche','nuit','晚上','🌙'],['today','hoy',"aujourd’hui",'今天','📅'],['tomorrow','mañana','demain','明天','➡️'],['yesterday','ayer','hier','昨天','⬅️'],['week','semana','semaine','星期','📆'],['month','mes','mois','月份','🗓️']],
+[['happy','feliz','heureux','开心','😊'],['sad','triste','triste','难过','😢'],['angry','enfadado','en colère','生气','😠'],['scared','asustado','effrayé','害怕','😨'],['excited','emocionado','excité','兴奋','🤩'],['tired','cansado','fatigué','累','😴'],['hungry','hambriento','affamé','饿','🍽️'],['thirsty','sediento','assoiffé','渴','🥤']],
+[['clean','limpio','propre','干净','✨'],['dirty','sucio','sale','脏','🧹'],['big','grande','grand','大','⬆️'],['small','pequeño','petit','小','⬇️'],['fast','rápido','rapide','快','💨'],['slow','lento','lent','慢','🐢'],['hot','caliente','chaud','热','🔥'],['cold','frío','froid','冷','🥶']]
+];
+const H=[
+['Please close the door.','Por favor, cierra la puerta.','Ferme la porte, s’il te plaît.','请关门。'],['Please open the window.','Por favor, abre la ventana.','Ouvre la fenêtre, s’il te plaît.','请开窗。'],['I want some water.','Quiero agua.','Je veux de l’eau.','我想要水。'],['I am hungry now.','Tengo hambre ahora.','J’ai faim maintenant.','我现在饿了。'],['Where is my bag?','¿Dónde está mi bolsa?','Où est mon sac ?','我的包在哪里？'],['Can I have the book?','¿Puedo tener el libro?','Je peux avoir le livre ?','我可以拿书吗？'],['Please wait for me.','Por favor, espérame.','Attends-moi, s’il te plaît.','请等我。'],['I am ready to go.','Estoy listo para irme.','Je suis prêt à partir.','我准备好了。'],['I like this food.','Me gusta esta comida.','J’aime cette nourriture.','我喜欢这个食物。'],['The bus is here.','El autobús está aquí.','Le bus est ici.','公交车到了。'],['It is raining today.','Hoy está lloviendo.','Il pleut aujourd’hui.','今天下雨。'],['I am cold today.','Tengo frío hoy.','J’ai froid aujourd’hui.','我今天很冷。'],['I am happy to see you.','Me alegra verte.','Je suis heureux de te voir.','见到你我很开心。'],['Please speak slowly.','Por favor, habla despacio.','Parle lentement, s’il te plaît.','请说慢一点。'],['Can you help me?','¿Puedes ayudarme?','Peux-tu m’aider ?','你能帮助我吗？'],['Thank you for your help.','Gracias por tu ayuda.','Merci pour ton aide.','谢谢你的帮助。']
+];
+const langs=['English','Spanish','French','Mandarin'];
+for(const l of langs){const v=VOCAB[l];
+ const li=langs.indexOf(l);
+ for(const set of S){const e=set.map(x=>({word:x[li],meaning:l==='English'?'':x[0],picture:x[4]}));v.easy.push(e);v.medium.push(e.map(x=>({...x})));}
+ for(let r=0;r<8;r++){const row=[];for(let j=0;j<8;j++){const h=H[(r*8+j)%H.length];const text=h[li];row.push({sentence:text,meaning:l==='English'?'':h[0],picture:['💬','🗣️','👂','🤝','❤️','📖','⏳','🚶'][j]});}v.hard.push(row);}
+}
+})();
