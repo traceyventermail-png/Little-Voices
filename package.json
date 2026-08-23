@@ -1,0 +1,1 @@
+{"name":"little-voices-android","version":"1.0.0","private":true,"description":"Android wrapper for the Little Voices language-learning app","scripts":{"android:add":"cap add android","android:sync":"cap sync android","android:open":"cap open android"},"dependencies":{"@capacitor/android":"^6.1.2","@capacitor/core":"^6.1.2"},"devDependencies":{"@capacitor/cli":"^6.1.2"}}
